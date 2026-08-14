@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: integrations
+    description: Per-user external account connections
 paths:
   /healthz:
     get:
@@ -24,7 +26,184 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /integrations:
+    get:
+      operationId: listExternalAccounts
+      tags: [integrations]
+      summary: List the current user's connected external accounts
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Connected accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalAccountConnections"
+        "401":
+          description: Authentication required
+  /integrations/{provider}/start:
+    get:
+      operationId: startExternalAccountOAuth
+      tags: [integrations]
+      summary: Start an external provider OAuth flow
+      security:
+        - clerkSession: []
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+      responses:
+        "302":
+          description: Redirect to the provider's official OAuth authorization page
+        "400":
+          description: Unsupported provider
+        "401":
+          description: Authentication required
+  /integrations/{provider}/callback:
+    get:
+      operationId: completeExternalAccountOAuth
+      tags: [integrations]
+      summary: Complete an external provider OAuth flow
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect back to NekoVerse Settings
+        "400":
+          description: Invalid OAuth callback
+        "401":
+          description: Authentication required
+  /integrations/{provider}:
+    delete:
+      operationId: disconnectExternalAccount
+      tags: [integrations]
+      summary: Disconnect only the current user's account for a provider
+      security:
+        - clerkSession: []
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+      responses:
+        "204":
+          description: Disconnected
+        "401":
+          description: Authentication required
+        "404":
+          description: No connection found
+  /integrations/anilist/graphql:
+    post:
+      operationId: anilistGraphql
+      tags: [integrations]
+      summary: Execute an AniList GraphQL request using the current user's token
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GraphqlRequest"
+      responses:
+        "200":
+          description: AniList response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Authentication required
+        "404":
+          description: AniList is not connected
+  /integrations/myanimelist/animelist:
+    get:
+      operationId: getMyAnimeList
+      tags: [integrations]
+      summary: Read the current user's MyAnimeList entries
+      security:
+        - clerkSession: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: MyAnimeList response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Authentication required
+        "404":
+          description: MyAnimeList is not connected
+  /integrations/myanimelist/animelist/{animeId}:
+    patch:
+      operationId: updateMyAnimeListEntry
+      tags: [integrations]
+      summary: Update one MyAnimeList entry using the current user's token
+      security:
+        - clerkSession: []
+      parameters:
+        - name: animeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated MyAnimeList entry
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Authentication required
+        "404":
+          description: MyAnimeList is not connected
 components:
+  parameters:
+    Provider:
+      name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [anilist, myanimelist, discord]
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +212,44 @@ components:
           type: string
       required:
         - status
+    ExternalAccountConnection:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [anilist, myanimelist, discord]
+        connected:
+          type: boolean
+        username:
+          type: [string, "null"]
+        avatarUrl:
+          type: [string, "null"]
+        connectedAt:
+          type: [string, "null"]
+          format: date-time
+      required:
+        - provider
+        - connected
+        - username
+        - avatarUrl
+        - connectedAt
+    ExternalAccountConnections:
+      type: object
+      properties:
+        connections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalAccountConnection"
+      required:
+        - connections
+    GraphqlRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        variables:
+          type: object
+          additionalProperties: true
+      required:
+        - query
 

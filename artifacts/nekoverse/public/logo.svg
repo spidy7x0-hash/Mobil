@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" role="img" aria-labelledby="title">
+  <title>NekoVerse</title>
+  <rect width="320" height="72" rx="20" fill="#1c171b"/>
+  <circle cx="38" cy="36" r="18" fill="#e52f68"/>
+  <path d="M29 39c4-12 14-12 18 0M31 28l-5-7 10 4M45 25l8-4-4 8" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+  <text x="70" y="46" fill="#f5f1f2" font-family="Arial, sans-serif" font-size="30" font-weight="700">NekoVerse</text>
+</svg>

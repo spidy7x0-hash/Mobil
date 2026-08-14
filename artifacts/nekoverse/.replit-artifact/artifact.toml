@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "NekoVerse"
+description = "A premium mobile-first anime and manga tracker with cinematic dark visuals, local placeholder content, browsing, details, library states, profile, and settings."
+version = "1.0.0"
+id = "artifacts/nekoverse"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19607
+
+[services.development]
+run = "pnpm --filter @workspace/nekoverse run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/nekoverse", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/nekoverse/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19607"
+BASE_PATH = "/"
