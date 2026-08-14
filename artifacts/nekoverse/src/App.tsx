@@ -409,6 +409,32 @@ const categories: { page: SettingPage; title: string; description: string; icon:
 ];
 function SettingsPage() {
   const { settings, updateSettings, updateAnimation, notify } = useNeko(); const [page, setPage] = useState<SettingPage>('index');
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauth = params.get('oauth');
+    const provider = params.get('provider') as IntegrationProvider | null;
+    const reason = params.get('reason');
+    if (!oauth || !provider || !integrationLabels[provider]) return;
+
+    if (oauth === 'connected') {
+      notify(`${integrationLabels[provider].title} Connected`);
+      void queryClient.invalidateQueries({ queryKey: getListExternalAccountsQueryKey() });
+    } else {
+      const messages: Record<string, string> = {
+        access_denied: `${integrationLabels[provider].title} authorization was cancelled`,
+        already_linked: 'That account is already linked to another NekoVerse user',
+        invalid_callback: `${integrationLabels[provider].title} returned an invalid callback`,
+        invalid_state: `${integrationLabels[provider].title} login expired. Please try again`,
+        provider_error: `${integrationLabels[provider].title} could not complete the connection`,
+        session_expired: 'Your NekoVerse session expired. Please sign in and try again',
+        unsupported_provider: 'That connection provider is not supported',
+      };
+      notify(messages[reason || ''] || `${integrationLabels[provider].title} connection failed`);
+    }
+
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [notify, queryClient]);
   const goBack = () => setPage(page === 'index' ? 'index' : 'index'); const set = (patch: Partial<AppSettings>) => updateSettings(patch);
   const title = page === 'index' ? 'Settings' : categories.find((item) => item.page === page)?.title || 'Settings';
   return <div className="settings-shell enter"><SettingsHeader title={title} page={page} onBack={goBack} /><AnimatePresence mode="wait"><motion.div key={page} initial={{ opacity: 0, x: page === 'index' ? -10 : 14 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: settings.animation.reducedMotion ? 0 : .22 }} className="px-5 pb-10 pt-6">{page === 'index' && <SettingsIndex onOpen={setPage} settings={settings} />}{page === 'accounts' && <AccountsSettings notify={notify} />}{page === 'theme' && <ThemeSettings settings={settings} update={set} />}{page === 'common' && <CommonSettings settings={settings} update={set} />}{page === 'anime' && <AnimeSettings settings={settings} update={set} />}{page === 'manga' && <MangaSettings settings={settings} update={set} />}{page === 'player' && <PlayerSettings settings={settings} update={set} />}{page === 'extensions' && <ExtensionSettings settings={settings} update={set} notify={notify} />}{page === 'downloads' && <DownloadSettings settings={settings} update={set} />}{page === 'sync' && <SyncSettings settings={settings} update={set} notify={notify} />}{page === 'animation' && <AnimationSettings settings={settings} update={updateAnimation} />}{page === 'about' && <AboutSettings />}</motion.div></AnimatePresence></div>;
@@ -455,18 +481,6 @@ function AccountsSettings({ notify }: { notify: (message: string) => void }) {
     { provider: 'myanimelist' as const, connected: false, username: null, avatarUrl: null, connectedAt: null },
     { provider: 'discord' as const, connected: false, username: null, avatarUrl: null, connectedAt: null },
   ];
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const oauth = params.get('oauth');
-    const provider = params.get('provider');
-    const reason = params.get('reason');
-    if (!oauth || !provider) return;
-    if (oauth === 'connected') notify(`${integrationLabels[provider as IntegrationProvider]?.title ?? provider} connected`);
-    else notify(reason === 'already_linked' ? 'That account is already linked to another NekoVerse user' : 'Connection was not completed');
-    window.history.replaceState({}, '', '/settings');
-    void queryClient.invalidateQueries({ queryKey: getListExternalAccountsQueryKey() });
-  }, [notify, queryClient]);
 
   const start = (provider: IntegrationProvider) => {
     if (!isSignedIn) {

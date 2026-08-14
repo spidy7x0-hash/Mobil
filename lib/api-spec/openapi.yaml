@@ -63,6 +63,8 @@ paths:
       operationId: completeExternalAccountOAuth
       tags: [integrations]
       summary: Complete an external provider OAuth flow
+      security:
+        - clerkSession: []
       parameters:
         - $ref: "#/components/parameters/Provider"
         - name: code

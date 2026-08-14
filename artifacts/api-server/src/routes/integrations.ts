@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
 import { Router, type IRouter, type Request } from "express";
 import {
   AnilistGraphqlBody,
@@ -58,9 +59,26 @@ function settingsRedirect(
   status: "connected" | "error",
   reason?: string,
 ): string {
+  const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
   const query = new URLSearchParams({ oauth: status, provider });
   if (reason) query.set("reason", reason);
-  return `/settings?${query.toString()}`;
+  return `${basePath || ""}/settings?${query.toString()}`;
+}
+
+function requireOAuthCallbackAuth(
+  req: Request,
+  res: Parameters<NonNullable<IRouter["get"]>>[1],
+  next: Parameters<NonNullable<IRouter["get"]>>[2],
+): void {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    const provider = providerParam(req) ?? "anilist";
+    res.redirect(settingsRedirect(provider, "error", "session_expired"));
+    return;
+  }
+
+  (req as AuthenticatedRequest).userId = userId;
+  next();
 }
 
 router.get("/integrations", requireAuth, async (req, res): Promise<void> => {
@@ -126,7 +144,7 @@ router.get(
 
 router.get(
   "/integrations/:provider/callback",
-  requireAuth,
+  requireOAuthCallbackAuth,
   async (req, res): Promise<void> => {
     const provider = providerParam(req);
     if (!provider) {
@@ -154,9 +172,11 @@ router.get(
       res.redirect(settingsRedirect(provider, "error", "invalid_state"));
       return;
     }
-    await db.delete(oauthStatesTable).where(eq(oauthStatesTable.stateHash, storedState.stateHash));
 
     try {
+      await db
+        .delete(oauthStatesTable)
+        .where(eq(oauthStatesTable.stateHash, storedState.stateHash));
       const codeVerifier = storedState.codeVerifier
         ? decryptSecret(storedState.codeVerifier)
         : undefined;

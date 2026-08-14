@@ -83,9 +83,15 @@ export function callbackUrl(
   provider: ExternalAccountProvider,
 ): string {
   const forwardedProto = req.headers["x-forwarded-proto"];
-  const protocol = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0]?.trim() || "http";
+  const protocol =
+    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)
+      ?.split(",")[0]
+      ?.trim() || "https";
   const forwardedHost = req.headers["x-forwarded-host"];
-  const host = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() || req.get("host");
+  const host =
+    (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)
+      ?.split(",")[0]
+      ?.trim() || req.get("host");
   if (!host) {
     throw new Error("Unable to determine public host for OAuth callback");
   }
